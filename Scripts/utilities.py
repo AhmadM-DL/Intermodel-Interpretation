@@ -357,3 +357,41 @@ def plot_embedding_performance_scatter(components, performance_data, task_datase
   plt.suptitle(f"Perfomance On Task {task.title()} ({task_dataset})")
   _ = plt.legend(loc = (1.02, 0.15))
   return
+
+##############################
+##########ENSEMBLES###########
+##############################
+
+def load_models_unify(folders):
+  for folder in folders:
+    folder_dataframes = [];
+    for filename in os.listdir(folder):
+      if not "csv" in filename:
+        continue
+      model = filename.split("_")[2]
+      dataframe = pd.read_csv(os.path.join(folder, filename), index_col=0)
+      dataframe["model"] = model
+      folder_dataframes.append(dataframe)
+    folder_dataframe = pd.concat(folder_dataframes)
+    folder_dataframe.to_csv(folder.split("/")[-1]+".csv")
+  return
+
+def compute_similarity_score(dataframe, score_name):
+  if score_name == "kappa":
+    score_fn = cohen_kappa_score
+  elif score_name == "agreement":
+    score_fn = lambda y1, y2 : (y1 == y2).sum()/len(y1)*100
+  else:
+    raise Exception
+  models = dataframe.model.unique()
+  output = pd.DataFrame([], columns=["model1", "model2", score_name])
+  ground_truth = dataframe[dataframe.model == models[0]].gt
+  for model1 in models:
+    pred1_proba = dataframe[dataframe.model == model1].iloc[:, :-2].values
+    pred1 = pred1_proba.argmax(axis=1)
+    for model2 in models:
+      pred2_proba = dataframe[dataframe.model == model2].iloc[:,:-2].values
+      pred2 = pred2_proba.argmax(axis=1)
+      score = score_fn(pred1, pred2)
+      output = output.append({"model1": model1, "model2": model2, score_name: score}, ignore_index=True)
+  return output
