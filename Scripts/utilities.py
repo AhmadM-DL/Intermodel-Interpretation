@@ -331,4 +331,29 @@ def plot_embedding_performance_correlation(components, performance_data, task):
   plt.legend()
   plt.show()
   return
-    
+
+def plot_embedding_performance_scatter(components, performance_data, task_dataset, correlation = "pearson"):
+  merged = components.merge(performance_data[["model", task_dataset]], on="model")
+  if "dt_" in task_dataset:
+    task = "many shot classification"
+  elif "_ap"  in task_dataset:
+    task = "detection"
+  elif "shot" in task_dataset:
+    task = "few shot classification"
+  elif "sne" in task_dataset:
+    task = "surfce normal estimation"
+  fig = plt.figure(figsize= (20,5))
+  for i in range(1,4):
+    plt.subplot(130 + i)
+    x = merged[f"pca{i}"]
+    y = merged[task_dataset]
+    for xp, yp, marker, color, label in zip(x, y, markers, colors, merged["model"]):
+      plt.scatter(xp, yp, marker= marker, color=color, label=label, s= 75)
+    m, b = np.polyfit(x, y, 1)
+    plt.plot(x, b + m*x)
+    plt.xlabel(f"Component {i}")
+    plt.ylabel(f"Task Performance")
+    plt.title(f"{correlation}: {x.corr(y,correlation):2.3}")
+  plt.suptitle(f"Perfomance On Task {task.title()} ({task_dataset})")
+  _ = plt.legend(loc = (1.02, 0.15))
+  return
