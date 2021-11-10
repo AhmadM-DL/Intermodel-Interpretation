@@ -266,3 +266,69 @@ def plot_abstracted_dissect_profiles(dissect_abstract_profiles, aggregation):
 
   plt.show()
   return
+
+
+def plot_embedding_performance_correlation(components, performance_data, task):
+  if task.lower() == "many shot classification":
+    anchor = "dt_"
+  elif task.lower() == "detection":
+    anchor = "_ap"
+  elif task.lower() == "few shot classification":
+    anchor = "shot"
+  elif task.lower() == "surface normal estimation":
+    anchor = "sne"
+  else:
+    raise Exception("task parameter should be in ['many shot classification', 'detection', \
+                    'few shot classification', 'surface normal estimation']")
+    
+  plt.figure(figsize=(16,4))
+  cols = [ c for c in performance_data.columns if anchor in c]
+  components_perf = components.merge(performance_data, on="model")
+  components_perf = components_perf[components_perf["model"]!="SeLaV1(R)"]
+
+  width=.3
+  plt.bar(np.arange(0,len(cols))-width, components_perf[cols].corrwith(components_perf["pca1"]), width, label="1st Component" )
+  plt.bar(np.arange(0,len(cols)), components_perf[cols].corrwith(components_perf["pca2"]), width, label="2nd Component" )
+  plt.bar(np.arange(0,len(cols))+width, components_perf[cols].corrwith(components_perf["pca3"]), width, label="3rd Component" )
+
+  labels = [c.replace("dt_", "").replace("_shot", "") for c in cols]
+
+  plt.xticks(range(0,len(cols)), labels= labels, rotation=70)
+  plt.title(f"Correlation Of Principal Components With Performance On {task.title()}")
+  plt.ylabel("Correlation")
+  plt.legend()
+  plt.show()
+  return 
+
+def plot_embedding_performance_correlation(components, performance_data, task):
+  if task.lower() == "many shot classification":
+    anchor = "dt_"
+  elif task.lower() == "detection":
+    anchor = "_ap"
+  elif task.lower() == "few shot classification":
+    anchor = "shot"
+  elif task.lower() == "surface normal estimation":
+    anchor = "sne"
+  else:
+    raise Exception("task parameter should be in ['many shot classification', 'detection', \
+                    'few shot classification', 'surface normal estimation']")
+    
+  plt.figure(figsize=(16,4))
+  cols = [ c for c in performance_data.columns if anchor in c]
+  components_perf = components.merge(performance_data, on="model")
+  components_perf = components_perf[components_perf["model"]!="SeLaV1(R)"]
+
+  width=.3
+  plt.bar(np.arange(0,len(cols))-width, components_perf[cols].corrwith(components_perf["pca1"]), width, label="1st Component" )
+  plt.bar(np.arange(0,len(cols)), components_perf[cols].corrwith(components_perf["pca2"]), width, label="2nd Component" )
+  plt.bar(np.arange(0,len(cols))+width, components_perf[cols].corrwith(components_perf["pca3"]), width, label="3rd Component" )
+
+  labels = [c.replace("dt_", "").replace("_shot", "") for c in cols]
+
+  plt.xticks(range(0,len(cols)), labels= labels, rotation=70)
+  plt.title(f"Correlation Of Principal Components With Performance On {task.title()}")
+  plt.ylabel("Correlation")
+  plt.legend()
+  plt.show()
+  return
+    
