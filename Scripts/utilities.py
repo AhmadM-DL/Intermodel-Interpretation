@@ -237,3 +237,32 @@ def correlate_component_abstract_profile(dissect_abstract_profiles, components):
 
   plt.show()
   return
+
+def plot_abstracted_dissect_profiles(dissect_abstract_profiles, aggregation):
+  if not aggregation.lower() in ["unique", "all"]:
+    print("aggregation parameter should be in [\"unique\", \"all\"]")
+  dissect_data = dissect_abstract_profiles[[c for c in dissect_abstract_profiles if aggregation in c]].copy().reset_index()
+  dissect_data[aggregation+"_sum"] = dissect_data.sum(axis=1)
+  dissect_data.sort_values(by=aggregation+"_sum", ascending=False, inplace=True)
+
+  width= 0.5
+  fig = plt.figure(figsize=(10,5))
+  x = [m.replace("(R)", "") for m in dissect_data["name"]]
+
+  objects = np.array(dissect_data[aggregation+"_object"])
+  parts = np.array(dissect_data[aggregation+"_part"])
+  materials = np.array(dissect_data[aggregation+"_material"])
+  colors = np.array(dissect_data[aggregation+"_color"])
+
+  plt.bar(x, objects, width=width, label="Objects")
+  plt.bar(x, parts, width=width, label="Objects Parts", bottom=objects)
+  plt.bar(x, materials, width=width, label="Material Parts", bottom=objects+parts)
+  plt.bar(x, colors, width=width, label="Color Parts", bottom=objects+parts+materials)
+
+  plt.legend()
+  plt.title(aggregation.capitalize() + " Concepts Found by Dissect")
+  plt.xticks(rotation=75)
+  plt.ylabel("# concepts")
+
+  plt.show()
+  return
