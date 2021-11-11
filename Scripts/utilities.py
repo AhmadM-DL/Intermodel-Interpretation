@@ -13,6 +13,8 @@ from pandas.plotting import parallel_coordinates
 
 from sklearn.neighbors import KNeighborsRegressor
 
+from sklearn.metrics import cohen_kappa_score
+
 
 plt.rcParams["axes.grid"] = True
 markers = ['v', 'p', 'd', '<', 'P', '>', '<', '+', '.', '+', 'o', '>', '>', 'p', '>', 'v', '^', 'v', '*', 'D']
