@@ -15,6 +15,14 @@ from sklearn.neighbors import KNeighborsRegressor
 
 from sklearn.metrics import cohen_kappa_score
 
+from scipy.spatial.distance import pdist
+
+from scipy.spatial.distance import squareform
+
+import plotly.express as xp
+
+import matplotlib.pyplot as plt
+
 
 plt.rcParams["axes.grid"] = True
 markers = ['v', 'p', 'd', '<', 'P', '>', '<', '+', '.', '+', 'o', '>', '>', 'p', '>', 'v', '^', 'v', '*', 'D']
@@ -384,6 +392,8 @@ def compute_similarity_score(dataframe, score_name):
     score_fn = cohen_kappa_score
   elif score_name == "agreement":
     score_fn = lambda y1, y2 : (y1 == y2).sum()/len(y1)*100
+  elif score_name == "euclidean":
+    score_fn = lambda y1, y2 : np.mean(np.linalg.norm(y1 - y2, axis=1))
   else:
     raise Exception
   models = dataframe.model.unique()
@@ -395,6 +405,32 @@ def compute_similarity_score(dataframe, score_name):
     for model2 in models:
       pred2_proba = dataframe[dataframe.model == model2].iloc[:,:-2].values
       pred2 = pred2_proba.argmax(axis=1)
-      score = score_fn(pred1, pred2)
+      if score_name == "euclidean":
+        score = score_fn(pred1_proba, pred2_proba)
+      else:
+        score = score_fn(pred1, pred2)
       output = output.append({"model1": model1, "model2": model2, score_name: score}, ignore_index=True)
   return output
+
+def pred_similarity_vs_distance(similarity, components, similarity_score_name):
+  similarity = similarity[~((similarity.model1=="infomax")|(similarity.model2=="infomax"))]
+  similarity_pairwise = similarity.pivot("model1", "model2")
+
+  components.model = components.model.str.replace("\(R\)", "") \
+                  .str.lower() \
+                  .str.replace("deepcluster", "dc") \
+                  .str.replace("v1", "") \
+                  .str.replace("min", "max")
+  components = components.set_index("model").loc[similarity_pairwise.index, :]
+  distance_pairwise = pd.DataFrame(squareform(pdist(components, metric='cosine')),
+                                  columns = components.index,
+                                  index = components.index,
+                                  )
+  similarity_pairwise.values[np.tril_indices(similarity_pairwise.shape[0], 0)] = np.nan
+  distance_pairwise.values[np.tril_indices(distance_pairwise.shape[0], 0)] = np.nan
+
+  plt.scatter(similarity_pairwise, distance_pairwise)
+  plt.xlabel(f"Similarity Score ({similarity_score_name})")
+  plt.ylabel("Embedding Cosine Distance")
+  _= plt.title("The Relation between models embedding\n distances and prediction similarity")
+  return
