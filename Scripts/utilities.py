@@ -191,7 +191,7 @@ def plot_embedding_coefficients(dissect_profiles, pca):
   return  
 
 
-def plot_embedding_performance(components, performance_data, learning_task="dt_ImageNet"):
+def plot_embedding_performance(components, performance_data, learning_task="dt_ImageNet", with_legend=True):
   
   pca1 = components.pca1
   pca2 = components.pca2
@@ -214,7 +214,8 @@ def plot_embedding_performance(components, performance_data, learning_task="dt_I
   for x, y, l, marker, color in zip(pca1, pca2, [l for l in components_perf["model"] ], markers, colors):
     plt.scatter(x, y, label=l, marker=marker, color=color)
 
-  plt.legend(loc="upper right", bbox_to_anchor=(1.8,1.02))
+  if with_legend:
+    plt.legend(loc="upper right", bbox_to_anchor=(1.8,1.02))
   plt.title("Semantic Space of models based on concepts found by Dissect ")
   plt.xlabel("pca.1")
   plt.ylabel("pca.2")
