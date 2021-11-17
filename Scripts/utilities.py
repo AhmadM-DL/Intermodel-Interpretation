@@ -399,7 +399,7 @@ def compute_similarity_score(dataframe, score_name):
     raise Exception
   models = dataframe.model.unique()
   output = pd.DataFrame([], columns=["model1", "model2", score_name])
-  ground_truth = dataframe[dataframe.model == models[0]].gt
+  ground_truth = dataframe[dataframe.model == models[0]]["gt"]
   for model1 in models:
     pred1_proba = dataframe[dataframe.model == model1].iloc[:, :-2].values
     pred1 = pred1_proba.argmax(axis=1)
@@ -411,6 +411,31 @@ def compute_similarity_score(dataframe, score_name):
       else:
         score = score_fn(pred1, pred2)
       output = output.append({"model1": model1, "model2": model2, score_name: score}, ignore_index=True)
+  return output
+
+def compute_ensemble(dataframe, approach = "weighted_soft"):
+  models = dataframe.model.unique()
+  output = pd.DataFrame([], columns=["model1", "model2", "perf1", "perf2", "perf_ensemble"])
+  ground_truth = dataframe[dataframe.model == models[0]]["gt"]
+
+  for model1 in models:
+    pred1_proba = dataframe[dataframe.model == model1].iloc[:, :-2].values
+    pred1 = pred1_proba.argmax(axis=1)
+    perf1 = (pred1 == ground_truth).sum()/len(ground_truth)*100
+
+    for model2 in models:
+      pred2_proba = dataframe[dataframe.model == model2].iloc[:,:-2].values
+      pred2 = pred2_proba.argmax(axis=1)
+      perf2 = (pred2 == ground_truth).sum()/len(ground_truth)*100
+
+      if approach == "weighted_soft":        
+        diff_ratio = abs(perf1-perf2)/100
+        w_pred1_proba = pred1_proba * (0.5 + ((-1)**(not perf1>=perf2))*diff_ratio)
+        w_pred2_proba = pred2_proba * (0.5 + ((-1)**(not perf1<perf2))*diff_ratio)
+        predBoth = (np.stack((w_pred1_proba, w_pred2_proba))).sum(axis=0).argmax(axis=1)
+        perfBoth = (predBoth==ground_truth).sum()/len(ground_truth)*100
+
+      output = output.append({"model1": model1, "model2": model2, "perf1": perf1, "perf2": perf2, "perf_ensemble": perfBoth}, ignore_index=True)
   return output
 
 def pred_similarity_vs_distance(similarity, components, similarity_score_name):
@@ -435,3 +460,37 @@ def pred_similarity_vs_distance(similarity, components, similarity_score_name):
   plt.ylabel("Embedding Cosine Distance")
   _= plt.title("The Relation between models embedding\n distances and prediction similarity")
   return
+
+def plot_detailed_ensemble_distance(ensemble_df, tag):
+  ensemble_df = ensemble_df[~((ensemble_df.model1=="infomax")|(ensemble_df.model2=="infomax"))]
+  ensemble_df_pairwise = ensemble_df.pivot("model1", "model2")
+  ensemble_df["model1"] = ensemble_df.model1.str.upper()
+  ensemble_df["model2"] = ensemble_df.model2.str.upper()
+  
+  reindex= ["DCV2", "SWAV", "SELAV2", "BYOL", "PCLV2",
+          "SUPERVISED", "MOCOV2",  "PIRL", "INSDIS", "PCL", "MOCO", "SELA"]
+
+  accs = ensemble_df.groupby(by="model1").min("perf1").loc[reindex,:]["perf1"]
+  accs = np.diag(accs)
+
+  ensemble_df["dif"] = (ensemble_df["perf_ensemble"] - ensemble_df[["perf1", "perf2"]].max(axis=1))
+  ensemble_df = ensemble_df.pivot(index="model1",columns="model2", values="dif")
+  ensemble_df = ensemble_df.loc[reindex, reindex]
+  ensemble_df.fillna(0, inplace=True) 
+
+  fig = plt.figure(figsize=(10,10))
+  plt.matshow(ensemble_df.abs(), cmap="hot_r", fignum=1)
+
+
+  for (i, j), z in np.ndenumerate(ensemble_df+accs):
+      if i==j:
+        plt.text(j, i, '{:2.3}'.format(z), ha='center', va='center')
+      else:
+        plt.text(j, i, '{:1.2}'.format(z), ha='center', va='center')
+
+  plt.title(f"Dissect Semantic Profile Cosine Distance\nCells Contains Performance Difference After Ensemble\n{tag}", position=(0.5,1.15))
+  plt.xticks(range(0, len(reindex)), labels = reindex, rotation=90)
+  plt.yticks(range(0, len(reindex)), labels = reindex)
+  plt.colorbar()
+  plt.grid(False)
+  plt.show()
